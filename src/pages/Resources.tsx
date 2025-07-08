@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Layout from "../components/Layout";
+import UploadResourceModal from "../components/UploadResourceModal";
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -15,8 +16,8 @@ const Resources = () => {
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedResource, setSelectedResource] = useState<any>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const resources = [
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [resources, setResources] = useState([
     {
       id: 1,
       title: "Financial Management - Complete Notes",
@@ -400,7 +401,7 @@ plt.show()
 3. **Raise**: Which factors should be raised above industry standard?
 4. **Create**: Which factors should be created that industry never offered?`
     }
-  ];
+  ]);
 
   const subjects = ["All", "Finance", "Marketing", "Operations", "Law", "Technology", "HR", "Strategy", "International Business"];
   const types = ["All", "Notes", "Reports", "Presentations", "Case Studies"];
@@ -444,6 +445,10 @@ plt.show()
     
     // Update download count (in real app, this would be an API call)
     resource.downloads += 1;
+  };
+
+  const handleUploadResource = (newResource: any) => {
+    setResources(prev => [newResource, ...prev]);
   };
 
   return (
@@ -640,7 +645,7 @@ plt.show()
                 <p className="text-sm text-gray-600 mb-4">
                   Help your peers by sharing your study materials and resources.
                 </p>
-                <Button className="w-full">Upload Resource</Button>
+                <Button className="w-full" onClick={() => setIsUploadOpen(true)}>Upload Resource</Button>
               </CardContent>
             </Card>
 
@@ -755,6 +760,13 @@ plt.show()
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Upload Resource Modal */}
+      <UploadResourceModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUpload={handleUploadResource}
+      />
     </Layout>
   );
 };
