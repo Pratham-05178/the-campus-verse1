@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Filter, Download, Eye, Heart, Star, Calendar, User, Tag, X, ChevronLeft, ChevronRight, FileText, Presentation, Calculator } from "lucide-react";
+import { Search, Filter, Download, Eye, Heart, Star, Calendar, User, Tag, X, ChevronLeft, ChevronRight, FileText, Presentation, Calculator, ThumbsUp, MessageCircle, Flag, TrendingUp, Clock, Plus, BookOpen, GraduationCap, Phone, Mail, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,21 +8,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Layout from "../components/Layout";
 import UploadResourceModal from "../components/UploadResourceModal";
+import RequestResourceModal from "../components/RequestResourceModal";
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [selectedResource, setSelectedResource] = useState<any>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isRequestOpen, setIsRequestOpen] = useState(false);
+  const [likedResources, setLikedResources] = useState<Set<number>>(new Set());
   const [resources, setResources] = useState([
     {
       id: 1,
       title: "Financial Management - Complete Notes",
       description: "Comprehensive notes covering all topics in financial management including capital budgeting, working capital, and financial analysis.",
       author: "Sarah Johnson",
+      authorImage: "/placeholder.svg",
+      authorRole: "Assistant Professor, Finance",
       subject: "Finance",
       type: "Notes",
       year: "2024",
@@ -30,6 +36,7 @@ const Resources = () => {
       views: 234,
       downloads: 45,
       likes: 23,
+      comments: 5,
       rating: 4.8,
       tags: ["finance", "management", "budgeting"],
       thumbnail: "/placeholder.svg",
@@ -71,6 +78,8 @@ Managing short-term assets and liabilities to ensure optimal liquidity.
       title: "Marketing Strategy Case Studies",
       description: "Real-world case studies of successful marketing campaigns and strategies from Fortune 500 companies.",
       author: "Prof. David Miller",
+      authorImage: "/placeholder.svg",
+      authorRole: "Professor, Marketing",
       subject: "Marketing",
       type: "Case Studies",
       year: "2024",
@@ -78,6 +87,7 @@ Managing short-term assets and liabilities to ensure optimal liquidity.
       views: 189,
       downloads: 67,
       likes: 34,
+      comments: 8,
       rating: 4.9,
       tags: ["marketing", "strategy", "case-study"],
       thumbnail: "/placeholder.svg",
@@ -131,6 +141,8 @@ Apple entered the smartphone market dominated by BlackBerry and Palm.
       title: "Operations Research - Linear Programming",
       description: "Detailed presentation on linear programming, transportation problems, and optimization techniques with solved examples.",
       author: "Mike Chen",
+      authorImage: "/placeholder.svg",
+      authorRole: "Student, IPM 2nd Year",
       subject: "Operations",
       type: "Presentations",
       year: "2023",
@@ -138,6 +150,7 @@ Apple entered the smartphone market dominated by BlackBerry and Palm.
       views: 156,
       downloads: 29,
       likes: 18,
+      comments: 3,
       rating: 4.5,
       tags: ["operations", "research", "optimization"],
       thumbnail: "/placeholder.svg",
@@ -185,6 +198,8 @@ Linear Programming (LP) is a mathematical method for determining the optimal all
       title: "Business Law - Contracts & Corporate Governance",
       description: "Comprehensive report on business law fundamentals including contract law, corporate governance, and intellectual property rights.",
       author: "Emma Davis",
+      authorImage: "/placeholder.svg",
+      authorRole: "Alumna, Class of 2023",
       subject: "Law",
       type: "Reports",
       year: "2024",
@@ -192,6 +207,7 @@ Linear Programming (LP) is a mathematical method for determining the optimal all
       views: 201,
       downloads: 52,
       likes: 28,
+      comments: 12,
       rating: 4.7,
       tags: ["law", "business", "contracts"],
       thumbnail: "/placeholder.svg",
@@ -240,6 +256,8 @@ For a contract to be legally enforceable, it must contain:
       title: "Data Analytics with Python - Complete Guide",
       description: "Step-by-step guide to data analysis using Python, pandas, matplotlib, and seaborn with 20+ practical examples and datasets.",
       author: "Alex Thompson",
+      authorImage: "/placeholder.svg",
+      authorRole: "Student, IPM 3rd Year",
       subject: "Technology",
       type: "Notes",
       year: "2024",
@@ -247,6 +265,7 @@ For a contract to be legally enforceable, it must contain:
       views: 312,
       downloads: 89,
       likes: 45,
+      comments: 15,
       rating: 4.9,
       tags: ["python", "data", "analytics"],
       thumbnail: "/placeholder.svg",
@@ -326,6 +345,8 @@ plt.show()
       title: "Strategic Management Framework",
       description: "Complete analysis framework with Porter's Five Forces, SWOT, PESTEL, and Blue Ocean Strategy with real case studies.",
       author: "Dr. Robert Kim",
+      authorImage: "/placeholder.svg",
+      authorRole: "Professor, Strategic Management",
       subject: "Strategy", 
       type: "Notes",
       year: "2024",
@@ -333,6 +354,7 @@ plt.show()
       views: 298,
       downloads: 73,
       likes: 41,
+      comments: 7,
       rating: 4.8,
       tags: ["strategy", "analysis", "frameworks"],
       thumbnail: "/placeholder.svg",
@@ -406,17 +428,37 @@ plt.show()
   const subjects = ["All", "Finance", "Marketing", "Operations", "Law", "Technology", "HR", "Strategy", "International Business"];
   const types = ["All", "Notes", "Reports", "Presentations", "Case Studies"];
   const years = ["All", "2024", "2023", "2022"];
+  const sortOptions = [
+    { value: "newest", label: "Newest First" },
+    { value: "popular", label: "Most Popular" },
+    { value: "rating", label: "Highest Rated" },
+    { value: "downloads", label: "Most Downloaded" }
+  ];
 
-  const filteredResources = resources.filter(resource => {
-    const matchesSearch = resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesSubject = selectedSubject === "all" || resource.subject.toLowerCase() === selectedSubject.toLowerCase();
-    const matchesType = selectedType === "all" || resource.type.toLowerCase() === selectedType.toLowerCase();
-    const matchesYear = selectedYear === "all" || resource.year === selectedYear;
-    
-    return matchesSearch && matchesSubject && matchesType && matchesYear;
-  });
+  const filteredAndSortedResources = resources
+    .filter(resource => {
+      const matchesSearch = resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           resource.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           resource.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSubject = selectedSubject === "all" || resource.subject.toLowerCase() === selectedSubject.toLowerCase();
+      const matchesType = selectedType === "all" || resource.type.toLowerCase() === selectedType.toLowerCase();
+      const matchesYear = selectedYear === "all" || resource.year === selectedYear;
+      
+      return matchesSearch && matchesSubject && matchesType && matchesYear;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "popular":
+          return b.views - a.views;
+        case "rating":
+          return b.rating - a.rating;
+        case "downloads":
+          return b.downloads - a.downloads;
+        case "newest":
+        default:
+          return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
+      }
+    });
 
   const topContributors = [
     { name: "Prof. David Miller", uploads: 24, badge: "Top Contributor" },
@@ -451,252 +493,438 @@ plt.show()
     setResources(prev => [newResource, ...prev]);
   };
 
+  const handleLike = (resourceId: number) => {
+    setLikedResources(prev => {
+      const newLiked = new Set(prev);
+      if (newLiked.has(resourceId)) {
+        newLiked.delete(resourceId);
+      } else {
+        newLiked.add(resourceId);
+      }
+      return newLiked;
+    });
+    
+    // Update resource likes count
+    setResources(prev => prev.map(resource => 
+      resource.id === resourceId 
+        ? { ...resource, likes: likedResources.has(resourceId) ? resource.likes - 1 : resource.likes + 1 }
+        : resource
+    ));
+  };
+
+  const getResourceTypeIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'notes':
+        return <FileText className="h-4 w-4" />;
+      case 'presentations':
+        return <Presentation className="h-4 w-4" />;
+      case 'case studies':
+        return <BookOpen className="h-4 w-4" />;
+      case 'reports':
+        return <Calculator className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Academic Resource Hub</h1>
-          <p className="text-lg text-gray-600">Discover and share study materials with your peers</p>
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-foreground mb-4 flex items-center justify-center gap-3">
+            <GraduationCap className="h-10 w-10 text-primary" />
+            Academic Resource Hub
+          </h1>
+          <p className="text-xl text-muted-foreground mb-2">Discover and share study materials with your peers at IIM Rohtak</p>
+          <p className="text-sm text-muted-foreground">Empowering students through collaborative learning</p>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+        {/* Sticky Search and Filters */}
+        <div className="sticky top-4 z-10 bg-card rounded-lg shadow-lg border p-6 space-y-4">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search Bar */}
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                 <Input
-                  placeholder="Search by subject, title, or keyword..."
-                  className="pl-10"
+                  placeholder="Search by subject, title, author, or keyword..."
+                  className="pl-10 h-12 text-base"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search resources"
                 />
               </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.map(subject => (
-                    <SelectItem key={subject} value={subject.toLowerCase()}>
-                      {subject}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {types.map(type => (
-                    <SelectItem key={type} value={type.toLowerCase()}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map(year => (
-                    <SelectItem key={year} value={year.toLowerCase()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button onClick={() => setIsUploadOpen(true)} className="h-12 px-6">
+                <Plus className="h-4 w-4 mr-2" />
+                Upload Resource
+              </Button>
+              <Button variant="outline" onClick={() => setIsRequestOpen(true)} className="h-12 px-6">
+                Request Resource
+              </Button>
             </div>
+          </div>
+
+          {/* Filters Row */}
+          <div className="flex flex-wrap gap-4">
+            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Subject" />
+              </SelectTrigger>
+              <SelectContent>
+                {subjects.map(subject => (
+                  <SelectItem key={subject} value={subject.toLowerCase()}>
+                    {subject}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {types.map(type => (
+                  <SelectItem key={type} value={type.toLowerCase()}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map(year => (
+                  <SelectItem key={year} value={year.toLowerCase()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {/* Results Summary */}
-            <div className="mb-6">
-              <p className="text-gray-600">
-                Showing {filteredResources.length} of {resources.length} resources
-              </p>
+        {/* Section Headers */}
+        <div className="space-y-8">
+          <section>
+            <div className="flex items-center gap-3 mb-6">
+              <TrendingUp className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">Trending Resources</h2>
             </div>
 
-            {/* Resource Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredResources.map(resource => (
-                <Card key={resource.id} className="group hover:shadow-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {resource.title}
-                        </CardTitle>
-                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                          {resource.description}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Heart className="h-4 w-4" />
-                      </Button>
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              {/* Main Content */}
+              <div className="lg:col-span-3">
+                {/* Results Summary */}
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-muted-foreground text-lg">
+                      Showing {filteredAndSortedResources.length} of {resources.length} resources
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Sorted by {sortOptions.find(opt => opt.value === sortBy)?.label}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Resource Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {filteredAndSortedResources.map(resource => (
+                    <Card key={resource.id} className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer border-2 hover:border-primary/20">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getResourceTypeIcon(resource.type)}
+                              <Badge variant="outline" className="text-xs">
+                                {resource.type}
+                              </Badge>
+                            </div>
+                            <CardTitle className="text-xl font-bold text-foreground group-hover:text-primary transition-colors mb-3">
+                              {resource.title}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                              {resource.description}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`transition-all ${likedResources.has(resource.id) ? 'text-red-500' : 'opacity-60 hover:opacity-100'}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLike(resource.id);
+                            }}
+                            aria-label={`Like ${resource.title}`}
+                          >
+                            <Heart className={`h-5 w-5 ${likedResources.has(resource.id) ? 'fill-current' : ''}`} />
+                          </Button>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="pt-0 space-y-4">
+                        {/* Author Info */}
+                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm text-foreground">{resource.author}</p>
+                            <p className="text-xs text-muted-foreground">{resource.authorRole}</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {resource.subject}
+                          </Badge>
+                        </div>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-2">
+                          {resource.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              #{tag}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        {/* Metadata */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center text-muted-foreground">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              <span>Added {formatDate(resource.uploadDate)}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-muted-foreground">
+                              <span className="text-xs">{resource.fileSize}</span>
+                              <span className="text-xs">{resource.pages} pages</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-4 text-center">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-center">
+                                <Eye className="h-4 w-4 text-blue-500" />
+                              </div>
+                              <span className="text-sm font-semibold text-foreground">{resource.views}</span>
+                              <span className="text-xs text-muted-foreground">Views</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-center">
+                                <Download className="h-4 w-4 text-green-500" />
+                              </div>
+                              <span className="text-sm font-semibold text-foreground">{resource.downloads}</span>
+                              <span className="text-xs text-muted-foreground">Downloads</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-center">
+                                <ThumbsUp className="h-4 w-4 text-red-500" />
+                              </div>
+                              <span className="text-sm font-semibold text-foreground">{resource.likes}</span>
+                              <span className="text-xs text-muted-foreground">Likes</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-center">
+                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                              </div>
+                              <span className="text-sm font-semibold text-foreground">{resource.rating}</span>
+                              <span className="text-xs text-muted-foreground">Rating</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <Button 
+                            size="lg" 
+                            className="flex-1 h-12"
+                            onClick={() => handleDownload(resource)}
+                            aria-label={`Download ${resource.title}`}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                          <Button 
+                            size="lg" 
+                            variant="outline" 
+                            className="flex-1 h-12"
+                            onClick={() => handlePreview(resource)}
+                            aria-label={`Preview ${resource.title}`}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </Button>
+                          <Button 
+                            size="lg" 
+                            variant="ghost"
+                            className="px-4"
+                            aria-label="Report inappropriate content"
+                          >
+                            <Flag className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Load More */}
+                <div className="text-center mt-12">
+                  <Button variant="outline" size="lg" className="px-8">
+                    Load More Resources
+                  </Button>
+                </div>
+              </div>
+
+              {/* Sidebar */}
+              <div className="space-y-6">
+                {/* Quick Actions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Plus className="h-5 w-5 text-primary" />
+                      Quick Actions
+                    </CardTitle>
                   </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button className="w-full justify-start" onClick={() => setIsUploadOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Upload Resource
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => setIsRequestOpen(true)}>
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Request Resource
+                    </Button>
+                  </CardContent>
+                </Card>
 
-                  <CardContent className="pt-0">
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {resource.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
+                {/* Top Contributors */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Star className="h-5 w-5 text-primary" />
+                      Top Contributors
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {topContributors.map((contributor, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm text-foreground">{contributor.name}</p>
+                            <p className="text-xs text-muted-foreground">{contributor.uploads} uploads</p>
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {contributor.badge}
+                          </Badge>
+                        </div>
                       ))}
-                    </div>
-
-                    {/* Metadata */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <User className="h-4 w-4 mr-2" />
-                        <span>{resource.author}</span>
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {resource.subject}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <span>{new Date(resource.uploadDate).toLocaleDateString()}</span>
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {resource.type}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <Eye className="h-4 w-4 mr-1" />
-                          <span>{resource.views}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Download className="h-4 w-4 mr-1" />
-                          <span>{resource.downloads}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 mr-1 text-yellow-500" />
-                          <span>{resource.rating}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span>{resource.fileSize}</span>
-                        <span>{resource.pages} pages</span>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleDownload(resource)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => handlePreview(resource)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Preview
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
 
-            {/* Load More */}
-            <div className="text-center mt-8">
-              <Button variant="outline">Load More Resources</Button>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Upload Resource */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Share Your Knowledge</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-4">
-                  Help your peers by sharing your study materials and resources.
-                </p>
-                <Button className="w-full" onClick={() => setIsUploadOpen(true)}>Upload Resource</Button>
-              </CardContent>
-            </Card>
-
-            {/* Top Contributors */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Top Contributors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {topContributors.map((contributor, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{contributor.name}</p>
-                        <p className="text-xs text-gray-600">{contributor.uploads} uploads</p>
+                {/* Recent Activity */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-primary" />
+                      Recent Activity
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex gap-3">
+                        <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
+                        <div className="text-sm">
+                          <p className="font-semibold text-foreground">New upload</p>
+                          <p className="text-muted-foreground">Strategic Management by Dr. Kim</p>
+                          <p className="text-xs text-muted-foreground">2 hours ago</p>
+                        </div>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {contributor.badge}
-                      </Badge>
+                      <div className="flex gap-3">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+                        <div className="text-sm">
+                          <p className="font-semibold text-foreground">Popular download</p>
+                          <p className="text-muted-foreground">Data Analytics with Python</p>
+                          <p className="text-xs text-muted-foreground">4 hours ago</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="w-2 h-2 rounded-full bg-purple-500 mt-2"></div>
+                        <div className="text-sm">
+                          <p className="font-semibold text-foreground">New contributor</p>
+                          <p className="text-muted-foreground">Prof. Maria Gonzalez joined</p>
+                          <p className="text-xs text-muted-foreground">6 hours ago</p>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="text-sm">
-                    <p className="font-medium">New upload</p>
-                    <p className="text-gray-600">Strategic Management by Dr. Kim</p>
-                    <p className="text-xs text-gray-500">2 hours ago</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-medium">Popular download</p>
-                    <p className="text-gray-600">Data Analytics with Python</p>
-                    <p className="text-xs text-gray-500">4 hours ago</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-medium">New contributor</p>
-                    <p className="text-gray-600">Prof. Maria Gonzalez joined</p>
-                    <p className="text-xs text-gray-500">6 hours ago</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                {/* Contact & Support */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Phone className="h-5 w-5 text-primary" />
+                      Need Help?
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-sm">
+                      <p className="font-semibold text-foreground mb-2">Contact & Support</p>
+                      <div className="space-y-2">
+                        <a href="mailto:library@iimrohtak.ac.in" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                          <Mail className="h-4 w-4" />
+                          Library Support
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                          <BookOpen className="h-4 w-4" />
+                          IT Support
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <a href="#" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                          <GraduationCap className="h-4 w-4" />
+                          Academic Services
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -766,6 +994,12 @@ plt.show()
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         onUpload={handleUploadResource}
+      />
+
+      {/* Request Resource Modal */}
+      <RequestResourceModal
+        isOpen={isRequestOpen}
+        onClose={() => setIsRequestOpen(false)}
       />
     </Layout>
   );
